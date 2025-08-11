@@ -3,7 +3,11 @@
 --- !u!78 &1
 TagManager:
   serializedVersion: 2
-  tags: []
+  tags:
+  - Enemy
+  - Weapon
+  - patrolPoints
+  - Boss
   layers:
   - Default
   - TransparentFX
@@ -13,10 +17,10 @@ TagManager:
   - UI
   - 
   - 
-  - 
-  - 
-  - 
-  - 
+  - Player
+  - Enemy
+  - Stopper
+  - Boss
   - 
   - 
   - 
@@ -40,19 +44,4 @@ TagManager:
   m_SortingLayers:
   - name: Default
     uniqueID: 0
-    locked: 0
-  - name: Background
-    uniqueID: 2412354461
-    locked: 0
-  - name: Pickups
-    uniqueID: 1175238371
-    locked: 0
-  - name: Player
-    uniqueID: 3196359329
-    locked: 0
-  - name: Enemies
-    uniqueID: 747246817
-    locked: 0
-  - name: UI
-    uniqueID: 476843341
     locked: 0
