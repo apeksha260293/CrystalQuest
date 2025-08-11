@@ -1,94 +1,63 @@
 using UnityEngine;
 using TMPro;
 
-/// <summary>
-/// Central manager that tracks player health, score, collected crystals
-/// and updates UI elements accordingly.  It also handles win and loss
-/// conditions: collecting all crystals triggers a win state, while
-/// health falling to zero triggers a game over.  The manager
-/// exposes methods called by other scripts to modify state.
-/// </summary>
 public class GameManager : MonoBehaviour
 {
     [Header("Player Settings")]
-    [Tooltip("Starting health of the player.")]
     public int playerHealth = 3;
+    public int playerLives = 3;
+    public int bombs = 3;
 
-    [Header("Crystal Settings")]
-    [Tooltip("Number of crystals that must be collected to win.")]
-    public int totalCrystals = 0;
+    [Header("Gate / Waves")]
+    public GameObject gatePrefab;
+    public Transform gateSpawnPoint;
+    public WaveManager waveManager;
+    public int currentWave = 1;
 
-    [Header("UI References")]
-    public TMP_Text scoreText;
-    public TMP_Text healthText;
-    public TMP_Text timerText;
-    public TMP_Text endText;
+    [Header("UI")]
+    public TextMeshProUGUI scoreText;
+    public TextMeshProUGUI healthText;
+    public TextMeshProUGUI timerText;
+    public TextMeshProUGUI endText;
+    public TextMeshProUGUI livesText;  // new
+    public TextMeshProUGUI bombsText;  // new
+    public TextMeshProUGUI waveText;   // new
 
-    private int collectedCrystals;
-    private int score;
-    private float startTime;
-    private bool gameEnded;
+    [HideInInspector] public int totalCrystals = 0;
+
+    int score = 0;
+    int collectedCrystals = 0;
+    bool gameEnded = false;
+    float startTime;
+    int maxHealth;
+    GameObject gateInstance;
 
     void Start()
     {
         startTime = Time.time;
+        maxHealth = playerHealth;
+
+        if (waveManager != null)
+        {
+            waveManager.SetGameManager(this);
+            waveManager.StartWave(currentWave);
+        }
+
         UpdateUI();
     }
 
     void Update()
     {
-        // Update the timer display while the game is active
-        if (!gameEnded)
+        if (gameEnded) return;
+        if (timerText != null)
         {
             float elapsed = Time.time - startTime;
-            int minutes = (int)(elapsed / 60f);
-            int seconds = (int)(elapsed % 60f);
-            if (timerText != null)
-            {
-                timerText.text = $"Time: {minutes:00}:{seconds:00}";
-            }
+            int minutes = Mathf.FloorToInt(elapsed / 60f);
+            int seconds = Mathf.FloorToInt(elapsed % 60f);
+            timerText.text = $"Time: {minutes:00}:{seconds:00}";
         }
     }
 
-    /// <summary>
-    /// Called by PlayerController when the player takes damage.  Decrements
-    /// health and ends the game if health is depleted.
-    /// </summary>
-    /// <param name="damage">Damage amount.</param>
-    public void PlayerTakeDamage(int damage)
-    {
-        if (gameEnded) return;
-        playerHealth -= damage;
-        UpdateUI();
-        if (playerHealth <= 0)
-        {
-            EndGame(false);
-        }
-    }
-
-    /// <summary>
-    /// Called by Crystal when collected.  Increases the score and checks
-    /// for win condition.
-    /// </summary>
-    /// <param name="crystal">The crystal GameObject collected.</param>
-    public void CollectCrystal(GameObject crystal)
-    {
-        if (gameEnded) return;
-        collectedCrystals++;
-        // Destroy the crystal
-        Destroy(crystal);
-        // Each crystal adds 5 points
-        AddScore(5);
-        if (collectedCrystals >= totalCrystals)
-        {
-            EndGame(true);
-        }
-    }
-
-    /// <summary>
-    /// Adds to the player's score and updates the UI.
-    /// </summary>
-    /// <param name="amount">Points to add.</param>
     public void AddScore(int amount)
     {
         if (gameEnded) return;
@@ -96,34 +65,90 @@ public class GameManager : MonoBehaviour
         UpdateUI();
     }
 
-    /// <summary>
-    /// Updates the on‑screen health and score labels.
-    /// </summary>
-    private void UpdateUI()
+    public void PlayerTakeDamage(int damage)
     {
-        if (scoreText != null)
+        if (gameEnded) return;
+        playerHealth -= damage;
+        if (playerHealth <= 0)
+            LoseLife();
+        else
+            UpdateUI();
+    }
+
+    void LoseLife()
+    {
+        playerLives--;
+        if (playerLives <= 0)
         {
-            scoreText.text = $"Score: {score}";
+            EndGame(false);
+            return;
         }
-        if (healthText != null)
+        playerHealth = maxHealth; // restore health
+        UpdateUI();
+        // Optional: reposition player to a safe spawn if needed
+    }
+
+    public void UseBomb()
+    {
+        if (gameEnded || bombs <= 0) return;
+        bombs--;
+        BombSystem.ClearAllEnemies();
+        UpdateUI();
+    }
+
+    public void CollectCrystal(GameObject crystal)
+    {
+        collectedCrystals++;
+        Destroy(crystal);
+        AddScore(5);
+
+        if (collectedCrystals >= totalCrystals)
+            SpawnGate();
+    }
+
+    void SpawnGate()
+    {
+        if (gatePrefab == null || gateSpawnPoint == null) return;
+        if (gateInstance != null) return;
+        gateInstance = Instantiate(gatePrefab, gateSpawnPoint.position, Quaternion.identity);
+    }
+
+    public void OnPlayerEnterGate()
+    {
+        if (gateInstance == null) return;
+        NextWave();
+    }
+
+    void NextWave()
+    {
+        currentWave++;
+        collectedCrystals = 0;
+        if (gateInstance != null) Destroy(gateInstance);
+
+        if (waveManager != null)
         {
-            healthText.text = $"Health: {playerHealth}";
+            waveManager.StartWave(currentWave);
+            UpdateUI();
+        }
+        else
+        {
+            EndGame(true);
         }
     }
 
-    /// <summary>
-    /// Ends the game, sets the end text, and stops further updates.  Use
-    /// this method to display win/lose messages.  Additional logic
-    /// (reloading scenes, stopping spawners) can be added here.
-    /// </summary>
-    /// <param name="won">True if the player collected all crystals.</param>
-    private void EndGame(bool won)
+    void UpdateUI()
+    {
+        if (scoreText)   scoreText.text = $"Score: {score}";
+        if (healthText)  healthText.text = $"Health: {playerHealth}";
+        if (livesText)   livesText.text = $"Lives: {playerLives}";
+        if (bombsText)   bombsText.text = $"Bombs: {bombs}";
+        if (waveText)    waveText.text = $"Wave: {currentWave}";
+    }
+
+    public void EndGame(bool win)
     {
         gameEnded = true;
-        if (endText != null)
-        {
-            endText.gameObject.SetActive(true);
-            endText.text = won ? "You Win!" : "Game Over";
-        }
+        if (endText) endText.text = win ? "YOU WIN!" : "GAME OVER";
+        Time.timeScale = 1f; // leave running for demo
     }
 }
