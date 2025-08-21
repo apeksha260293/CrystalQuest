@@ -1,47 +1,49 @@
-﻿using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// Represents a simple projectile fired by the player.  The projectile
+/// travels in the direction given by its transform's right vector and
+/// damages enemies on contact.  It self‑destructs after a configurable
+/// lifetime to avoid lingering objects in the scene.
+/// </summary>
 public class Projectile : MonoBehaviour
 {
+    [Tooltip("Speed of the projectile in units per second.")]
+    public float speed = 10f;
+    [Tooltip("Amount of damage inflicted on an enemy when hit.")]
+    public int damage = 1;
+    [Tooltip("Time in seconds before the projectile is automatically destroyed.")]
+    public float lifetime = 5f;
 
-    public float speed;
-    public float lifetime;
-    public int damage;
-
-    public GameObject soundEffect;
-
-    public GameObject explosion;
-
-    void Awake()
-    {
-        Instantiate(soundEffect, transform.position, transform.rotation);
-    }
     void Start()
     {
-        Invoke("DestroyProjectile", lifetime);
+        // Destroy the projectile after its lifetime expires
+        Destroy(gameObject, lifetime);
     }
 
     void Update()
     {
-        transform.Translate(Vector2.up * Time.deltaTime * speed);
+        // Move forward in the local right direction; multiply by deltaTime
+        // to ensure frame‑rate independent motion
+        transform.Translate(Vector3.right * speed * Time.deltaTime, Space.Self);
     }
 
-    void DestroyProjectile(){
-        Instantiate(explosion, transform.position, Quaternion.identity); // instantiates the explosion particle
-        Destroy(gameObject);
-    }
-
-    private void OnTriggerEnter2D(Collider2D collision){
-        if(collision.tag == "Enemy") {
-            collision.GetComponent<Enemy>().TakeDamage(damage);
-            DestroyProjectile();
-        }
-
-        if (collision.tag == "Boss")
+    void OnTriggerEnter2D(Collider2D other)
+    {
+        // When colliding with an enemy, apply damage and destroy the projectile
+        if (other.CompareTag("Enemy"))
         {
-            collision.GetComponent<Boss>().TakeDamage(damage);
-            DestroyProjectile();
+            Enemy enemy = other.GetComponent<Enemy>();
+            if (enemy != null)
+            {
+                enemy.TakeDamage(damage);
+            }
+            Destroy(gameObject);
+        }
+        else if (other.CompareTag("Obstacle"))
+        {
+            // Optionally destroy projectile when hitting walls or obstacles
+            Destroy(gameObject);
         }
     }
 }
