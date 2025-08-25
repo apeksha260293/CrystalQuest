@@ -12,9 +12,11 @@ GameObject:
   - component: {fileID: 9168931267156035178}
   - component: {fileID: 6822951401618352568}
   - component: {fileID: 9129214948519843978}
+  - component: {fileID: -1051828284509944313}
+  - component: {fileID: 2127097786497265160}
   m_Layer: 0
   m_Name: Enemy
-  m_TagString: Untagged
+  m_TagString: Enemy
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -28,7 +30,7 @@ Transform:
   m_GameObject: {fileID: 2815924944911893545}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 3, y: 3, z: 2}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -75,7 +77,7 @@ SpriteRenderer:
   m_SortingLayerID: 747246817
   m_SortingLayer: 4
   m_SortingOrder: 0
-  m_Sprite: {fileID: 21300000, guid: 9c0daa965d2fc49c686bf0e58087b35b, type: 3}
+  m_Sprite: {fileID: 21300000, guid: f667f28409783429d8929e005edae219, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -120,4 +122,40 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   moveSpeed: 2
-  health: 1
+  health: 3
+  deathSound: {fileID: 0}
+--- !u!58 &-1051828284509944313
+CircleCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2815924944911893545}
+  m_Enabled: 1
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_UsedByComposite: 0
+  m_Offset: {x: 0, y: 0}
+  serializedVersion: 2
+  m_Radius: 0.32
+--- !u!114 &2127097786497265160
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2815924944911893545}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e7a3afc50c16241e8a1636ef0596e3d1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  projectilePrefab: {fileID: 890250905233398814, guid: 482f86239715b4eebaefa579af8ec705, type: 3}
+  projectileSpeed: 8
+  spawnDistance: 0.8
+  fireRate: 1.2
+  cooldownJitter: 0.35
+  range: 8
+  maxLiveProjectiles: 2

@@ -1,48 +1,37 @@
 using UnityEngine;
 
-/// <summary>
-/// Represents a simple projectile fired by the player.  The projectile
-/// travels in the direction given by its transform's right vector and
-/// damages enemies on contact.  It self‑destructs after a configurable
-/// lifetime to avoid lingering objects in the scene.
-/// </summary>
+[RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
 public class Projectile : MonoBehaviour
 {
-    [Tooltip("Speed of the projectile in units per second.")]
-    public float speed = 10f;
-    [Tooltip("Amount of damage inflicted on an enemy when hit.")]
+    public float speed = 12f;
+    public float lifetime = 2f;
     public int damage = 1;
-    [Tooltip("Time in seconds before the projectile is automatically destroyed.")]
-    public float lifetime = 5f;
 
-    void Start()
+    Rigidbody2D rb;
+
+    void Awake()
     {
-        // Destroy the projectile after its lifetime expires
-        Destroy(gameObject, lifetime);
+        rb = GetComponent<Rigidbody2D>();
+        var col = GetComponent<Collider2D>();
+        col.isTrigger = true;
     }
 
-    void Update()
+    // Called immediately after Instantiate
+    public void Init(Vector2 dir)
     {
-        // Move forward in the local right direction; multiply by deltaTime
-        // to ensure frame‑rate independent motion
-        transform.Translate(Vector3.right * speed * Time.deltaTime, Space.Self);
+        rb.velocity = dir.normalized * speed;
+        CancelInvoke();
+        Invoke(nameof(SelfDestruct), lifetime);
     }
+
+    void SelfDestruct() { if (this) Destroy(gameObject); }
 
     void OnTriggerEnter2D(Collider2D other)
     {
-        // When colliding with an enemy, apply damage and destroy the projectile
         if (other.CompareTag("Enemy"))
         {
-            Enemy enemy = other.GetComponent<Enemy>();
-            if (enemy != null)
-            {
-                enemy.TakeDamage(damage);
-            }
-            Destroy(gameObject);
-        }
-        else if (other.CompareTag("Obstacle"))
-        {
-            // Optionally destroy projectile when hitting walls or obstacles
+            var e = other.GetComponent<Enemy>();
+            if (e) e.TakeDamage(damage);
             Destroy(gameObject);
         }
     }

@@ -1,69 +1,97 @@
 using UnityEngine;
 
+[RequireComponent(typeof(Rigidbody2D))]
 public class PlayerController : MonoBehaviour
 {
     [Header("Movement")]
-    public float moveSpeed = 5f;
-    public Rigidbody2D rb;
+    public float speed = 6f;
+
+    [Header("Visuals")]
+    public SpriteRenderer spriteRenderer;          // drag Player/Sprite here (optional)
 
     [Header("Shooting")]
-    public Transform projectileSpawnPoint;
-    public GameObject projectilePrefab;
-    public float fireRate = 0.25f;
+    public GameObject projectilePrefab;            // drag your Projectile prefab
+    public Transform projectileSpawnPoint;         // child under Player
+    public float fireRate = 6f;                    // shots/sec
+    public Vector2 muzzleLocalOffset = new Vector2(0.35f, 0f); // offset from Player
 
-    [Header("Bomb")]
-    public KeyCode bombKey = KeyCode.B;
-
-    Vector2 movement;
+    Rigidbody2D rb;
+    Vector2 input;
     float nextFireTime;
-    GameManager gameManager;
 
-    void Start()
+    void Awake()
     {
-        if (!rb) rb = GetComponent<Rigidbody2D>();
-        if (rb)
+        rb = GetComponent<Rigidbody2D>();
+        if (!spriteRenderer) spriteRenderer = GetComponentInChildren<SpriteRenderer>();
+
+        // Find OR create one spawn point (as a child)
+        if (!projectileSpawnPoint)
         {
-            rb.gravityScale = 0f;
-            rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+            var t = transform.Find("ProjectileSpawnPoint");
+            if (!t)
+            {
+                var go = new GameObject("ProjectileSpawnPoint");
+                t = go.transform;
+                t.SetParent(transform);
+            }
+            projectileSpawnPoint = t;
         }
-        gameManager = FindObjectOfType<GameManager>();
-        transform.position = new Vector3(transform.position.x, transform.position.y, 0f);
+
+        // Ensure it's a clean transform (no physics/scripts on the spawn point)
+        foreach (var c in projectileSpawnPoint.GetComponents<Component>())
+        {
+            if (c is Transform) continue;
+            DestroyImmediate(c);
+        }
+
+        projectileSpawnPoint.localPosition = new Vector3(muzzleLocalOffset.x, muzzleLocalOffset.y, 0f);
+        projectileSpawnPoint.localRotation = Quaternion.identity;
     }
 
     void Update()
     {
-        movement.x = Input.GetAxisRaw("Horizontal");
-        movement.y = Input.GetAxisRaw("Vertical");
+        // Movement input
+        float x = 0f, y = 0f;
+        if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) x = 1f;
+        if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow))  x = -1f;
+        if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow))    y = 1f;
+        if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow))  y = -1f;
+        input = new Vector2(x, y).normalized;
 
-        if (movement.sqrMagnitude > 0.01f)
-            transform.right = movement.normalized; // face where we move
+        // Face the sprite
+        if (spriteRenderer && Mathf.Abs(input.x) > 0.02f)
+            spriteRenderer.flipX = input.x < 0f;
 
-        if (Input.GetButton("Fire1") && Time.time >= nextFireTime)
+        // Keep spawn point parented and positioned in front of the face
+        if (projectileSpawnPoint.parent != transform)
+            projectileSpawnPoint.SetParent(transform);
+
+        float dirSign = (spriteRenderer && spriteRenderer.flipX) ? -1f : 1f;
+        projectileSpawnPoint.localPosition = new Vector3(muzzleLocalOffset.x * dirSign, muzzleLocalOffset.y, 0f);
+        projectileSpawnPoint.right = (dirSign > 0f) ? Vector3.right : Vector3.left;
+
+        // Fire (hold Space), rate-limited
+        if (projectilePrefab && projectileSpawnPoint &&
+            Input.GetKey(KeyCode.Space) && Time.time >= nextFireTime)
         {
-            Shoot();
-            nextFireTime = Time.time + fireRate;
-        }
+            nextFireTime = Time.time + 1f / fireRate;
 
-        if (Input.GetKeyDown(bombKey))
-            gameManager?.UseBomb();
+            var bullet = Instantiate(projectilePrefab,
+                                     projectileSpawnPoint.position,
+                                     projectileSpawnPoint.rotation);
+
+            // Give velocity instantly (works even if Projectile.cs also sets it)
+            if (bullet.TryGetComponent<Rigidbody2D>(out var rbBullet))
+            {
+                float projSpeed = 12f;
+                if (bullet.TryGetComponent<Projectile>(out var p)) projSpeed = p.speed;
+                rbBullet.velocity = projectileSpawnPoint.right * projSpeed;
+            }
+        }
     }
 
     void FixedUpdate()
     {
-        if (!rb) return;
-        rb.velocity = movement.normalized * moveSpeed;
-    }
-
-    void Shoot()
-    {
-        if (!projectilePrefab || !projectileSpawnPoint) return;
-        var p = Instantiate(projectilePrefab, projectileSpawnPoint.position, Quaternion.identity);
-        p.transform.right = transform.right;
-    }
-
-    // called by enemies on collision
-    public void TakeDamage(int amount)
-    {
-        gameManager?.PlayerTakeDamage(amount);
+        rb.velocity = input * speed;
     }
 }

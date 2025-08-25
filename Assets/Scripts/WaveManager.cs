@@ -3,25 +3,30 @@ using UnityEngine;
 public class WaveManager : MonoBehaviour
 {
     [Header("Crystals")]
-    public GameObject crystalPrefab;
-    public Vector2[] crystalPositions;
+    public GameObject crystalPrefab;     // prefab with Crystal.cs + trigger collider
+    public Vector2[] crystalPositions;   // list of positions to spawn
 
     [Header("Spawners")]
-    public EnemySpawner[] spawners;
+    public EnemySpawner[] spawners;      // optional enemy spawners to ramp difficulty
 
-    GameManager gameManager;
+    private GameManager gameManager;
 
     public void SetGameManager(GameManager gm) => gameManager = gm;
 
     public void StartWave(int waveNumber)
     {
         if (gameManager == null) gameManager = FindObjectOfType<GameManager>();
+        if (gameManager == null)
+        {
+            Debug.LogError("[WaveManager] No GameManager found in scene.");
+            return;
+        }
 
-        // clear old crystals
-        foreach (Crystal c in FindObjectsOfType<Crystal>())
-            Destroy(c.gameObject);
+        // Clear any existing crystals in the scene
+        foreach (var c in FindObjectsOfType<Crystal>())
+            if (c) Destroy(c.gameObject);
 
-        // spawn new crystals
+        // Spawn the new set of crystals
         int count = 0;
         if (crystalPrefab != null && crystalPositions != null)
         {
@@ -31,9 +36,15 @@ public class WaveManager : MonoBehaviour
                 count++;
             }
         }
-        gameManager.totalCrystals = count;
+        else
+        {
+            Debug.LogWarning("[WaveManager] crystalPrefab or crystalPositions not set.");
+        }
 
-        // ramp difficulty: spawn faster each wave
+        // Tell GameManager how many must be collected this wave
+        gameManager.TotalCrystals = count;
+
+        // Optional: ramp enemy spawn difficulty each wave
         if (spawners != null)
         {
             foreach (var s in spawners)
@@ -43,5 +54,7 @@ public class WaveManager : MonoBehaviour
                 s.spawnInterval = Mathf.Max(1f, newInterval);
             }
         }
+
+        Debug.Log($"[WaveManager] Wave {waveNumber} started. Crystals spawned: {count}");
     }
 }

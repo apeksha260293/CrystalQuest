@@ -1,52 +1,57 @@
+// Enemy.cs
 using UnityEngine;
 
-/// Basic enemy that seeks the player. Subclasses can override behaviour.
+[RequireComponent(typeof(Rigidbody2D))]
 public class Enemy : MonoBehaviour
 {
     [Tooltip("Movement speed of the enemy (units/sec).")]
     public float moveSpeed = 2f;
 
     [Tooltip("Starting health of the enemy.")]
-    public int health = 1;
+    public int health = 3;
 
-    // Protected so subclasses (e.g., EnemyWanderer) can access.
+    [Header("Audio")]
+    public AudioClip deathSound;
+
     protected Transform target;
     protected Rigidbody2D rb;
-    protected GameManager gameManager;
+    private AudioSource audioSource;
 
-    // Make Start/Update virtual so they can be overridden.
     protected virtual void Start()
     {
-        GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
-        if (playerObj != null) target = playerObj.transform;
+        var playerObj = GameObject.FindGameObjectWithTag("Player");
+        if (playerObj) target = playerObj.transform;
+
         rb = GetComponent<Rigidbody2D>();
-        gameManager = FindObjectOfType<GameManager>();
+        audioSource = gameObject.AddComponent<AudioSource>();
+        audioSource.spatialBlend = 0f; // 2D
     }
 
     protected virtual void Update()
     {
-        if (target == null || rb == null) return;
+        if (!target || !rb) return;
+
         Vector2 dir = ((Vector2)target.position - rb.position).normalized;
         rb.velocity = dir * moveSpeed;
     }
 
-    public void TakeDamage(int damage)
+    public void TakeDamage(int dmg)
     {
-        health -= damage;
+        health -= dmg;
+
         if (health <= 0)
         {
-            if (gameManager != null) gameManager.AddScore(1);
-            Destroy(gameObject);
+            if (deathSound) audioSource.PlayOneShot(deathSound);
+            Destroy(gameObject, 0.1f); // small delay to let sound play
         }
     }
 
-    void OnCollisionEnter2D(Collision2D c)
+    void OnTriggerEnter2D(Collider2D other)
     {
-        if (c.gameObject.CompareTag("Player"))
-        {
-            var player = c.gameObject.GetComponent<PlayerController>();
-            if (player != null) player.TakeDamage(1);
-            Destroy(gameObject);
-        }
+        if (!other.CompareTag("Player")) return;
+
+        var hp = other.GetComponent<PlayerHealth>();
+        if (hp) hp.TakeDamage(10);
+        Destroy(gameObject);
     }
 }

@@ -1,154 +1,350 @@
+// using UnityEngine;
+// using UnityEngine.SceneManagement;   // for restart key
+// using TMPro;
+
+// public class GameManager : MonoBehaviour
+// {
+//     [Header("UI")]
+//     public TMP_Text scoreText;      // assign ScoreText
+//     public TMP_Text timerText;      // assign TimerText
+//     public TMP_Text endText;        // optional EndText
+
+//     [Header("Rules")]
+//     [SerializeField] private int totalCrystals = 10;   // keep field private
+//     public int TotalCrystals                            // expose safely for WaveManager
+//     {
+//         get => totalCrystals;
+//         set
+//         {
+//             totalCrystals = Mathf.Max(0, value);
+//             UpdateScoreUI(); // keep UI in sync if WaveManager changes the count
+//         }
+//     }
+
+//     [Header("Refs")]
+//     public CrystalSpawner spawner;  // assign the Spawner (with CrystalSpawner)
+
+//     [Header("Audio")]
+//     public AudioClip backgroundMusic;   // drag your music clip here
+//     [Range(0f,1f)] public float musicVolume = 0.5f;
+//     private AudioSource musicSource;
+
+//     // state
+//     int collected = 0;
+//     int spawned   = 0;
+//     float elapsed = 0f;
+//     bool timerRunning = true;
+
+//     void Awake()
+//     {
+//         if (spawner == null) spawner = FindObjectOfType<CrystalSpawner>();
+//         if (scoreText == null) scoreText = FindByName<TMP_Text>("ScoreText");
+//         if (timerText == null) timerText = FindByName<TMP_Text>("TimerText");
+//         if (endText   == null) endText   = FindByName<TMP_Text>("EndText");
+
+//         if (totalCrystals <= 0) totalCrystals = 10;
+//         Time.timeScale = 1f;
+
+//         // Music source setup
+//         if (backgroundMusic != null)
+//         {
+//             musicSource = gameObject.AddComponent<AudioSource>();
+//             musicSource.clip = backgroundMusic;
+//             musicSource.loop = true;
+//             musicSource.playOnAwake = false;
+//             musicSource.spatialBlend = 0f;           // 2D
+//             musicSource.volume = Mathf.Clamp01(musicVolume);
+//         }
+
+//         if (spawner == null) Debug.LogError("[GameManager] Spawner NOT assigned.");
+//         if (timerText == null) Debug.LogWarning("[GameManager] TimerText NOT assigned.");
+//         if (scoreText == null) Debug.LogWarning("[GameManager] ScoreText NOT assigned.");
+//     }
+
+//     void Start()
+//     {
+//         collected = 0;
+//         spawned   = 0;
+//         elapsed   = 0f;
+//         timerRunning = true;
+
+//         UpdateScoreUI();
+//         Debug.Log("[GameManager] Start -> spawning first crystal");
+//         SpawnNext();                        // sequential spawning: one at a time
+
+//         // Start background music
+//         if (musicSource != null) musicSource.Play();
+//     }
+
+//     void Update()
+//     {
+//         // Timer
+//         if (timerRunning)
+//         {
+//             elapsed += Time.deltaTime;
+//             if (timerText != null)
+//             {
+//                 int m = Mathf.FloorToInt(elapsed / 60f);
+//                 int s = Mathf.FloorToInt(elapsed % 60f);
+//                 timerText.text = $"Time : {m:00}:{s:00}";
+//             }
+//         }
+//         else
+//         {
+//             // Restart key once game has ended (win or lose)
+//             if (Input.GetKeyDown(KeyCode.R))
+//             {
+//                 SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+//             }
+//         }
+//     }
+
+//     // Called by Crystal.cs on pickup
+//     public void CollectCrystal(GameObject crystal)
+//     {
+//         Debug.Log("[GameManager] CollectCrystal called");
+//         if (crystal) Destroy(crystal);
+//         AddScore(1);
+
+//         if (collected < totalCrystals)
+//             SpawnNext();
+//     }
+
+//     // Also used by Enemy.cs when you kill an enemy (kept for compatibility)
+//     public void AddScore(int value)
+//     {
+//         collected += value;
+//         UpdateScoreUI();
+//         if (collected >= totalCrystals)
+//             EndGame(true);
+//     }
+
+//     // For a goal/gate script if you use it
+//     public void OnPlayerEnterGate()
+//     {
+//         EndGame(true);
+//     }
+
+//     void SpawnNext()
+//     {
+//         if (spawned >= totalCrystals)
+//         {
+//             Debug.Log("[GameManager] Not spawning: already spawned enough.");
+//             return;
+//         }
+//         if (spawner == null)
+//         {
+//             Debug.LogError("[GameManager] Cannot spawn: spawner reference missing.");
+//             return;
+//         }
+
+//         var go = spawner.SpawnOne();
+//         if (go != null)
+//         {
+//             spawned++;
+//             Debug.Log($"[GameManager] Spawned {spawned}/{totalCrystals}");
+//         }
+//     }
+
+//     void UpdateScoreUI()
+//     {
+//         if (scoreText != null)
+//             scoreText.text = $"Crystals : {collected}/{totalCrystals}";
+//     }
+
+//     // --- UPDATED ENDGAME ---
+//     void EndGame(bool won)
+//     {
+//         if (!timerRunning) return;
+//         timerRunning = false;
+
+//         // Stop music when the game ends
+//         if (musicSource != null && musicSource.isPlaying) musicSource.Stop();
+
+//         if (endText != null)
+//         {
+//             endText.text = won ? "YOU WIN!" : "GAME OVER!";
+//             endText.fontSize = 72;         // big
+//             endText.color = Color.yellow;  // bright
+//         }
+
+//         Debug.Log(won ? "[GameManager] YOU WIN!" : "[GameManager] GAME OVER!");
+//     }
+
+//     public void GameOver() => EndGame(false);
+
+//     // Utility to find by name if you forgot to wire a field
+//     T FindByName<T>(string name) where T : Component
+//     {
+//         foreach (var t in FindObjectsOfType<T>(true))
+//             if (t.name == name) return t;
+//         return null;
+//     }
+// }
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using TMPro;
 
 public class GameManager : MonoBehaviour
 {
-    [Header("Player Settings")]
-    public int playerHealth = 3;
-    public int playerLives = 3;
-    public int bombs = 3;
-
-    [Header("Gate / Waves")]
-    public GameObject gatePrefab;
-    public Transform gateSpawnPoint;
-    public WaveManager waveManager;
-    public int currentWave = 1;
-
     [Header("UI")]
-    public TextMeshProUGUI scoreText;
-    public TextMeshProUGUI healthText;
-    public TextMeshProUGUI timerText;
-    public TextMeshProUGUI endText;
-    public TextMeshProUGUI livesText;  // new
-    public TextMeshProUGUI bombsText;  // new
-    public TextMeshProUGUI waveText;   // new
+    public TMP_Text scoreText;
+    public TMP_Text timerText;
+    public TMP_Text endText;
 
-    [HideInInspector] public int totalCrystals = 0;
+    [Header("Rules")]
+    [SerializeField] private int totalCrystals = 10;
+    public int TotalCrystals
+    {
+        get => totalCrystals;
+        set
+        {
+            totalCrystals = Mathf.Max(0, value);
+            UpdateScoreUI();
+        }
+    }
 
-    int score = 0;
-    int collectedCrystals = 0;
-    bool gameEnded = false;
-    float startTime;
-    int maxHealth;
-    GameObject gateInstance;
+    [Header("Refs")]
+    public CrystalSpawner spawner;
+
+    [Header("Audio")]
+    public AudioClip backgroundMusic;
+    [Range(0f,1f)] public float musicVolume = 0.5f;
+    private AudioSource musicSource;
+
+    [Header("Game Time Limit")]
+    public float timeLimit = 60f;   // 60 seconds
+
+    // state
+    int collected = 0;
+    int spawned   = 0;
+    float elapsed = 0f;
+    bool timerRunning = true;
+
+    public static GameManager Instance { get; private set; }
+
+    void Awake()
+    {
+        Instance = this;
+
+        if (spawner == null) spawner = FindObjectOfType<CrystalSpawner>();
+        if (scoreText == null) scoreText = FindByName<TMP_Text>("ScoreText");
+        if (timerText == null) timerText = FindByName<TMP_Text>("TimerText");
+        if (endText   == null) endText   = FindByName<TMP_Text>("EndText");
+
+        if (totalCrystals <= 0) totalCrystals = 10;
+        Time.timeScale = 1f;
+
+        // Music setup
+        if (backgroundMusic != null)
+        {
+            musicSource = gameObject.AddComponent<AudioSource>();
+            musicSource.clip = backgroundMusic;
+            musicSource.loop = true;
+            musicSource.playOnAwake = false;
+            musicSource.spatialBlend = 0f;
+            musicSource.volume = Mathf.Clamp01(musicVolume);
+        }
+    }
 
     void Start()
     {
-        startTime = Time.time;
-        maxHealth = playerHealth;
+        collected = 0;
+        spawned   = 0;
+        elapsed   = 0f;
+        timerRunning = true;
 
-        if (waveManager != null)
-        {
-            waveManager.SetGameManager(this);
-            waveManager.StartWave(currentWave);
-        }
+        UpdateScoreUI();
+        SpawnNext();
 
-        UpdateUI();
+        if (musicSource != null) musicSource.Play();
     }
 
     void Update()
     {
-        if (gameEnded) return;
-        if (timerText != null)
+        if (timerRunning)
         {
-            float elapsed = Time.time - startTime;
-            int minutes = Mathf.FloorToInt(elapsed / 60f);
-            int seconds = Mathf.FloorToInt(elapsed % 60f);
-            timerText.text = $"Time: {minutes:00}:{seconds:00}";
+            elapsed += Time.deltaTime;
+
+            // Update timer UI
+            if (timerText != null)
+            {
+                int m = Mathf.FloorToInt(elapsed / 60f);
+                int s = Mathf.FloorToInt(elapsed % 60f);
+                timerText.text = $"Time : {m:00}:{s:00}";
+            }
+
+            // --- Lose condition if timer exceeded ---
+            if (elapsed >= timeLimit && collected < totalCrystals)
+            {
+                EndGame(false);  // Game over
+            }
         }
-    }
-
-    public void AddScore(int amount)
-    {
-        if (gameEnded) return;
-        score += amount;
-        UpdateUI();
-    }
-
-    public void PlayerTakeDamage(int damage)
-    {
-        if (gameEnded) return;
-        playerHealth -= damage;
-        if (playerHealth <= 0)
-            LoseLife();
         else
-            UpdateUI();
-    }
-
-    void LoseLife()
-    {
-        playerLives--;
-        if (playerLives <= 0)
         {
-            EndGame(false);
-            return;
+            // Allow restart after game ends
+            if (Input.GetKeyDown(KeyCode.R))
+                SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
         }
-        playerHealth = maxHealth; // restore health
-        UpdateUI();
-        // Optional: reposition player to a safe spawn if needed
-    }
-
-    public void UseBomb()
-    {
-        if (gameEnded || bombs <= 0) return;
-        bombs--;
-        BombSystem.ClearAllEnemies();
-        UpdateUI();
     }
 
     public void CollectCrystal(GameObject crystal)
     {
-        collectedCrystals++;
-        Destroy(crystal);
-        AddScore(5);
+        if (crystal) Destroy(crystal);
+        AddScore(1);
 
-        if (collectedCrystals >= totalCrystals)
-            SpawnGate();
+        if (collected < totalCrystals)
+            SpawnNext();
     }
 
-    void SpawnGate()
+    public void AddScore(int value)
     {
-        if (gatePrefab == null || gateSpawnPoint == null) return;
-        if (gateInstance != null) return;
-        gateInstance = Instantiate(gatePrefab, gateSpawnPoint.position, Quaternion.identity);
+        collected += value;
+        UpdateScoreUI();
+        if (collected >= totalCrystals)
+            EndGame(true);  // Win
     }
 
-    public void OnPlayerEnterGate()
+    public void OnPlayerEnterGate() => EndGame(true);
+
+    void SpawnNext()
     {
-        if (gateInstance == null) return;
-        NextWave();
+        if (spawned >= totalCrystals) return;
+        if (spawner == null) return;
+
+        var go = spawner.SpawnOne();
+        if (go != null) spawned++;
     }
 
-    void NextWave()
+    void UpdateScoreUI()
     {
-        currentWave++;
-        collectedCrystals = 0;
-        if (gateInstance != null) Destroy(gateInstance);
+        if (scoreText != null)
+            scoreText.text = $"Crystals : {collected}/{totalCrystals}";
+    }
 
-        if (waveManager != null)
+    void EndGame(bool won)
+    {
+        if (!timerRunning) return;
+        timerRunning = false;
+
+        if (musicSource != null && musicSource.isPlaying) musicSource.Stop();
+
+        if (endText != null)
         {
-            waveManager.StartWave(currentWave);
-            UpdateUI();
+            endText.text = won ? "YOU WIN!" : "GAME OVER!";
+            endText.fontSize = 72;
+            endText.color = won ? Color.yellow : Color.red;
         }
-        else
-        {
-            EndGame(true);
-        }
+
+        Debug.Log(won ? "[GameManager] YOU WIN!" : "[GameManager] GAME OVER!");
     }
 
-    void UpdateUI()
-    {
-        if (scoreText)   scoreText.text = $"Score: {score}";
-        if (healthText)  healthText.text = $"Health: {playerHealth}";
-        if (livesText)   livesText.text = $"Lives: {playerLives}";
-        if (bombsText)   bombsText.text = $"Bombs: {bombs}";
-        if (waveText)    waveText.text = $"Wave: {currentWave}";
-    }
+    public void GameOver() => EndGame(false);
 
-    public void EndGame(bool win)
+    T FindByName<T>(string name) where T : Component
     {
-        gameEnded = true;
-        if (endText) endText.text = win ? "YOU WIN!" : "GAME OVER";
-        Time.timeScale = 1f; // leave running for demo
+        foreach (var t in FindObjectsOfType<T>(true))
+            if (t.name == name) return t;
+        return null;
     }
 }
